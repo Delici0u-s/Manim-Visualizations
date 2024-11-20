@@ -1,3 +1,4 @@
+
 from manim import *
 import numpy as np
 
@@ -105,17 +106,52 @@ def WriteXHeaders(Matrix, array):
 
     return VGroup(*out)
 
+def GetImportantColumnHighlighterBox(Matrix, array, Headers):
+    matrix_mob = Matrix.get_entries()
 
+    yas = GetHermanIndexLinePoints(array)
+    CenteredElements = [matrix_mob[yas[i]].get_center() for i in range(len(yas))]
+
+    vertical_distance = abs(matrix_mob[0].get_y() - matrix_mob[len(array[0]+1)].get_y())*0.5
+    horizontal_distance = abs(matrix_mob[0].get_x() - matrix_mob[1].get_x())*0.5
+    PercDOWN = DOWN * vertical_distance
+    PercUP = UP * vertical_distance
+    PercLEFT = LEFT * horizontal_distance + RIGHT * 0.3
+    PercRIGHT = RIGHT * horizontal_distance + RIGHT * 0.3
+    
+    
+    
+    out = []
+    asd = [0 for i in range((len(array[0])))]
+    for i in range(len(array[0])):
+        prev = False
+        for j in range(len(array)-1, -1, -1):
+            if prev or array[j][i] != 0:
+                prev = True
+                asd[i] += 1
+    
+    for count, i in enumerate(Headers, start=0):
+        Tangle = RoundedRectangle(corner_radius=0.25*PercRIGHT[0], width=2*PercLEFT[0], height=PercDOWN[1]*asd[count])
+        out.append(Tangle.move_to(i.get_center()+(PercDOWN*asd[count])))
+    return out
 class Hermische_Normalform(Scene):
     def construct(self):
         visuMatrix1 = Matrix(array1)
         self.add(visuMatrix1)
         # self.play(Write(visuMatrix1))
-        self.wait(1)
+        # self.wait(1)
 
+        MatrixHeaders = WriteXHeaders(visuMatrix1, array1)
+        self.add(MatrixHeaders)
+        # self.play(Write(MatrixHeaders))
 
-        self.play(Write(WriteXHeaders(visuMatrix1, array1)))
-
-        self.play(Create(GetRedLine(visuMatrix1, array1)))
-
+        RedIndicatorLine = GetRedLine(visuMatrix1, array1)
+        self.add(RedIndicatorLine)
+        # self.play(Create(RedIndicatorLine))
+        # self.wait(1)
+        
+        ImportantLines = GetImportantColumnHighlighterBox(visuMatrix1, array1, MatrixHeaders)
+        ImportantLinesGroup = VGroup(*ImportantLines)
+        self.play(Create(ImportantLinesGroup))
+        
         self.wait(2)
