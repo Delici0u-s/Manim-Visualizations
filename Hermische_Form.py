@@ -42,6 +42,8 @@ def GetHermanIndexLinePoints(arr):
     # print(out)
     return out
 
+Loesungcounter = 0
+
 def GetRedLine(Matrix, array):
             matrix_mob = Matrix.get_entries()
 
@@ -102,7 +104,6 @@ def WriteXHeaders(Matrix, array):
     for i in range(len(array[0])):
         out.append(MathTex(f"x_{i+1}", color=GREEN).move_to(pos))
         pos += PercRIGHT*2+[0.02, 0, 0]
-        # pos += PercRIGHT  # HERE RIGHT HERE CHATGPT
 
     return VGroup(*out)
 
@@ -159,19 +160,18 @@ def Create_Solution(self, Matrix, array, MatrixHeaders, ImportantLine, RowID, Ad
     CleanupObjects.add(CurrentItemSelector)
     self.play(Create(CurrentItemSelector))
     
-    ResetOutputMatrix(self, AdditionalObjects[3], array)
+    ResetOutputMatrix(self, AdditionalObjects[3], array, AdditionalObjects[4])
     
     Items = []
     for i in range(len(array)):
         MatrixMobPos = np.ravel_multi_index((i, ColumnID), array.shape)
         if MatrixMobPos <= MaxItemID:
             Items.append(matrix_mob[MatrixMobPos])
-            self.play(Create(Cube(side_length=0.5).move_to(matrix_mob[MatrixMobPos].get_center())))
 
 
     
     
-    #FirstLineOne(self, MatrixHeaders[ColumnID], AdditionalObjects[3][0][ColumnID])
+    FirstLineOne(self, MatrixHeaders[ColumnID], AdditionalObjects[3][0][ColumnID])
     
     for i in range(len(Items)-1, -1, -1):
         #PutInto(self, Items[i], matrix_mob[yas[i]], MatrixHeaders[yas[i]%len(array[0])], AdditionalObjects[3][0][yas[i]%len(array[0])], AdditionalObjects[0])
@@ -181,7 +181,6 @@ def Create_Solution(self, Matrix, array, MatrixHeaders, ImportantLine, RowID, Ad
     for i in range(len(Items)):
         otherItemsArr.add(yas[i]%len(array[0]))
         
-    print(otherItemsArr)
     outMats = []
     for i in range(len(AdditionalObjects[3][0])):
         if  i != ColumnID and i not in otherItemsArr:
@@ -239,11 +238,12 @@ def FirstLineOne(self, HeaderObj, EndMatrixObj):
     
     self.play(Transform(EndMatrixObj, Oneobj))
     self.remove(Oneobj)
+    
 
 def AddAdditionalObjects(self, visuMatrix1, array, MatrixHeaders, RedIndicatorLine):
     
     NegativeOneTopRight = MathTex("-1").to_corner((UP + LEFT)*.5)
-    SolutionSymbols = MathTex("\mathbb{L}: ").to_corner(DOWN + RIGHT).shift(LEFT*1.5)
+    SolutionSymbols = MathTex(f"\mathbb{{L}}  : ").to_corner(DOWN + RIGHT).shift(LEFT*1.5)
         
     AllRelevntObject = VGroup(visuMatrix1, *MatrixHeaders, *RedIndicatorLine)
     self.play(AllRelevntObject.animate.shift(LEFT * 1.3))
@@ -268,7 +268,7 @@ def AddAdditionalObjects(self, visuMatrix1, array, MatrixHeaders, RedIndicatorLi
     return out
 
 
-def ResetOutputMatrix(self, visMatrix, array):
+def ResetOutputMatrix(self, visMatrix, array, Loesungsmengensymbol):
     tmpArr = [[f"x_{i+1}"] for i in range(len(array[0]))]
     refreshMatrix = Matrix(tmpArr).move_to(visMatrix.get_center())
     
@@ -279,7 +279,10 @@ def ResetOutputMatrix(self, visMatrix, array):
             *[Transform(visMatrixMob[i], refreshMatrixMob[i]) for i in range(len(refreshMatrixMob))],
             lag_ratio=0.1,
         ))
-        
+    global Loesungcounter
+    Loesungcounter += 1
+    Loesungsmengensymbol.become(MathTex(f"\mathbb{{L}}_{Loesungcounter}: ").to_corner(DOWN + RIGHT).shift(LEFT*1.5))
+    
 
 class Hermische_Normalform(Scene):
     def construct(self):
