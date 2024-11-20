@@ -100,7 +100,7 @@ def WriteXHeaders(Matrix, array):
     pos = [(Matrix.get_left()+PercRIGHT)[0]-0.1, toppos, 0]
 
     for i in range(len(array[0])):
-        out.append(MathTex(f"x_{i}", color=GREEN).move_to(pos))
+        out.append(MathTex(f"x_{i+1}", color=GREEN).move_to(pos))
         pos += PercRIGHT*2+[0.02, 0, 0]
         # pos += PercRIGHT  # HERE RIGHT HERE CHATGPT
 
@@ -141,9 +141,14 @@ def GetImportantColumnHighlighterBox(Matrix, array, Headers):
 
 def Create_Solution(self, Matrix, array, MatrixHeaders, ImportantLine, RowID, AdditionalObjects):
     matrix_mob = Matrix.get_entries()
+    yas = GetHermanIndexLinePoints(array)
     
     ColumnID = ImpHeaderIDs[RowID]
-    MaxItemID = np.ravel_multi_index((RowID, ColumnID), array.shape)
+    
+    for i in range(len(array)-1, -1, -1):
+        if array[i][ColumnID] != 0:
+            MaxItemID = np.ravel_multi_index((i, ColumnID), array.shape)
+            break
     
     CleanupObjects = VGroup()
     
@@ -154,23 +159,40 @@ def Create_Solution(self, Matrix, array, MatrixHeaders, ImportantLine, RowID, Ad
     CleanupObjects.add(CurrentItemSelector)
     self.play(Create(CurrentItemSelector))
     
+    ResetOutputMatrix(self, AdditionalObjects[3], array)
+    
     Items = []
     for i in range(len(array)):
         MatrixMobPos = np.ravel_multi_index((i, ColumnID), array.shape)
         if MatrixMobPos <= MaxItemID:
             Items.append(matrix_mob[MatrixMobPos])
-            # self.play(Create(Cube(side_length=1).move_to(matrix_mob[MatrixMobPos].get_center())))
+            self.play(Create(Cube(side_length=0.5).move_to(matrix_mob[MatrixMobPos].get_center())))
 
 
-    matrix_mob = Matrix.get_entries()
-    yas = GetHermanIndexLinePoints(array)
+    
+    
+    #FirstLineOne(self, MatrixHeaders[ColumnID], AdditionalObjects[3][0][ColumnID])
+    
+    for i in range(len(Items)-1, -1, -1):
+        #PutInto(self, Items[i], matrix_mob[yas[i]], MatrixHeaders[yas[i]%len(array[0])], AdditionalObjects[3][0][yas[i]%len(array[0])], AdditionalObjects[0])
+        ...
+        
+    otherItemsArr = set()
     for i in range(len(Items)):
-        PutInto(self, Items[i], matrix_mob[yas[i]], MatrixHeaders[ColumnID], AdditionalObjects[3][0][ColumnID], AdditionalObjects[0])
-    '''
-    for i in 1:
-        curr = 1
-        self.play(Create(Cube(side_length=1).move_to(curr.get_center())))
-    '''
+        otherItemsArr.add(yas[i]%len(array[0]))
+        
+    print(otherItemsArr)
+    outMats = []
+    for i in range(len(AdditionalObjects[3][0])):
+        if  i != ColumnID and i not in otherItemsArr:
+            outMats.append(AdditionalObjects[3][0][i])
+            
+    if outMats:
+        self.play(AnimationGroup(
+                *[Transform(outMats[i], MathTex("0").move_to(outMats[i].get_center())) for i in range(len(outMats))],
+                lag_ratio=0.1,
+            ))
+    
     
     self.play(FadeOut(CleanupObjects), scale=0.5)
     return None
@@ -191,25 +213,43 @@ def PutInto(self, OrigMatrixObj, OrigMatrixGoal, HeaderObj, EndMatrixObj, Negati
     
     self.play(MoveToTarget(tmpCopyOne))
     
+    tmp = MathTex(str(int(tmpObj.get_tex_string())*int(tmpCopyOne.get_tex_string()))).move_to(tmpObj.get_center())
+    tmp2 =  VGroup(tmpObj, tmpCopyOne)
     self.play(Transform(
-        VGroup(tmpObj, tmpCopyOne),
-        MathTex(str(int(tmpObj.get_tex_string())*int(tmpCopyOne.get_tex_string()))).move_to(tmpObj.get_center())
+        tmp2,
+        tmp
     ))
     
+    tmp2.generate_target()
+    tmp2.target.move_to(EndMatrixObj.get_center())
+    self.play(MoveToTarget(tmp2))
     
+    self.play(Transform(EndMatrixObj, tmp2))
+    self.remove(tmp2)
     
-    ...
+def FirstLineOne(self, HeaderObj, EndMatrixObj):
+    Oneobj = MathTex("1").move_to(HeaderObj.get_center())
+    self.play(TransformFromCopy(HeaderObj, Oneobj))
+    
+    Oneobj.generate_target()
+    Oneobj.target.move_to(HeaderObj.get_center()+UP*0.8)
+    self.play(MoveToTarget(Oneobj))
+    Oneobj.target.move_to(EndMatrixObj.get_center())
+    self.play(MoveToTarget(Oneobj))
+    
+    self.play(Transform(EndMatrixObj, Oneobj))
+    self.remove(Oneobj)
 
 def AddAdditionalObjects(self, visuMatrix1, array, MatrixHeaders, RedIndicatorLine):
     
-    NegativeOneTopRight = MathTex("-1").to_corner(UP + LEFT)
+    NegativeOneTopRight = MathTex("-1").to_corner((UP + LEFT)*.5)
     SolutionSymbols = MathTex("\mathbb{L}: ").to_corner(DOWN + RIGHT).shift(LEFT*1.5)
         
     AllRelevntObject = VGroup(visuMatrix1, *MatrixHeaders, *RedIndicatorLine)
     self.play(AllRelevntObject.animate.shift(LEFT * 1.3))
     OutText = MathTex("=>").move_to(visuMatrix1.get_right()+RIGHT*0.7)
     
-    tmpArr = [[f"x_{i}"] for i in range(len(array[0]))]
+    tmpArr = [[f"x_{i+1}"] for i in range(len(array[0]))]
     OutMatrix = Matrix(tmpArr)
     OutMatrix.move_to(OutText.get_right() + RIGHT*0.7)
     
@@ -229,7 +269,7 @@ def AddAdditionalObjects(self, visuMatrix1, array, MatrixHeaders, RedIndicatorLi
 
 
 def ResetOutputMatrix(self, visMatrix, array):
-    tmpArr = [[f"x_{i}"] for i in range(len(array[0]))]
+    tmpArr = [[f"x_{i+1}"] for i in range(len(array[0]))]
     refreshMatrix = Matrix(tmpArr).move_to(visMatrix.get_center())
     
     visMatrixMob = visMatrix.get_entries()
@@ -243,6 +283,7 @@ def ResetOutputMatrix(self, visMatrix, array):
 
 class Hermische_Normalform(Scene):
     def construct(self):
+        
         visuMatrix1 = Matrix(array1)
         self.add(visuMatrix1)
         # self.play(Write(visuMatrix1))
@@ -285,7 +326,6 @@ class Hermische_Normalform(Scene):
         
         
         for i in range(len(ImpHeaderIDs)):
-            ResetOutputMatrix(self, AddObjOutput[3], array1)
             Create_Solution(self, visuMatrix1, array1, MatrixHeaders, ImportantLines[i], i, AddObjOutput)
         
         self.wait(2)
