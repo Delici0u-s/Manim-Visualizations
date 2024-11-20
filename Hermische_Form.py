@@ -63,9 +63,9 @@ def GetRedLine(Matrix, array):
                 )
                 try:
                     CenteredElements[index+1]
-                    DoTrans = CenteredElements[index+1] + PercUP - PercRIGHT * 0.3
+                    DoTrans = CenteredElements[index+1] + PercUP - PercRIGHT * 0.29
                 except:
-                    DoTrans = CenteredElements[index] + PercDOWN + PercRIGHT * 0.3
+                    DoTrans = CenteredElements[index] + PercDOWN + PercRIGHT * 0.29
                     pass
 
                 horizontal_line = Line(
@@ -120,7 +120,7 @@ def GetImportantColumnHighlighterBox(Matrix, array, Headers):
     
     
     out = []
-    asd = [0 for i in range((len(array[0])))]
+    asd = [0 for _ in range((len(array[0])))]
     for i in range(len(array[0])):
         prev = False
         for j in range(len(array)-1, -1, -1):
@@ -139,16 +139,115 @@ def GetImportantColumnHighlighterBox(Matrix, array, Headers):
         
     return out
 
-def Create_Solution(self, Matrix):
-    self.add(Cube())
+def Create_Solution(self, Matrix, array, MatrixHeaders, ImportantLine, RowID, AdditionalObjects):
+    matrix_mob = Matrix.get_entries()
+    
+    ColumnID = ImpHeaderIDs[RowID]
+    MaxItemID = np.ravel_multi_index((RowID, ColumnID), array.shape)
+    
+    CleanupObjects = VGroup()
+    
+    # self.play(TransformFromCopy(MatrixHeaders[ColumnID], ImportantLine))
+    # self.play(Transform(ImportantLine, MatrixHeaders[ColumnID]))
+    
+    CurrentItemSelector = Elbow(width=0.5, angle = 5*PI/4, color=PURE_RED).move_to(MatrixHeaders[ColumnID].get_bottom()+DOWN*0.1)
+    CleanupObjects.add(CurrentItemSelector)
+    self.play(Create(CurrentItemSelector))
+    
+    Items = []
+    for i in range(len(array)):
+        MatrixMobPos = np.ravel_multi_index((i, ColumnID), array.shape)
+        if MatrixMobPos <= MaxItemID:
+            Items.append(matrix_mob[MatrixMobPos])
+            # self.play(Create(Cube(side_length=1).move_to(matrix_mob[MatrixMobPos].get_center())))
+
+
+    matrix_mob = Matrix.get_entries()
+    yas = GetHermanIndexLinePoints(array)
+    for i in range(len(Items)):
+        PutInto(self, Items[i], matrix_mob[yas[i]], MatrixHeaders[ColumnID], AdditionalObjects[3][0][ColumnID], AdditionalObjects[0])
+    '''
+    for i in 1:
+        curr = 1
+        self.play(Create(Cube(side_length=1).move_to(curr.get_center())))
+    '''
+    
+    self.play(FadeOut(CleanupObjects), scale=0.5)
     return None
+
+def PutInto(self, OrigMatrixObj, OrigMatrixGoal, HeaderObj, EndMatrixObj, NegativeOne):
+    tmpObj = OrigMatrixObj.copy()
+    tmpObj.generate_target()
+    tmpObj.target.move_to(OrigMatrixGoal.get_center())
+    
+    self.play(MoveToTarget(tmpObj))
+    
+    tmpObj.target.move_to(HeaderObj.get_center()+UP*0.8)
+    self.play(MoveToTarget(tmpObj))
+    
+    tmpCopyOne = NegativeOne.copy()
+    tmpCopyOne.generate_target()
+    tmpCopyOne.target.move_to(tmpObj.get_center())
+    
+    self.play(MoveToTarget(tmpCopyOne))
+    
+    self.play(Transform(
+        VGroup(tmpObj, tmpCopyOne),
+        MathTex(str(int(tmpObj.get_tex_string())*int(tmpCopyOne.get_tex_string()))).move_to(tmpObj.get_center())
+    ))
+    
+    
+    
+    ...
+
+def AddAdditionalObjects(self, visuMatrix1, array, MatrixHeaders, RedIndicatorLine):
+    
+    NegativeOneTopRight = MathTex("-1").to_corner(UP + LEFT)
+    SolutionSymbols = MathTex("\mathbb{L}: ").to_corner(DOWN + RIGHT).shift(LEFT*1.5)
+        
+    AllRelevntObject = VGroup(visuMatrix1, *MatrixHeaders, *RedIndicatorLine)
+    self.play(AllRelevntObject.animate.shift(LEFT * 1.3))
+    OutText = MathTex("=>").move_to(visuMatrix1.get_right()+RIGHT*0.7)
+    
+    tmpArr = [[f"x_{i}"] for i in range(len(array[0]))]
+    OutMatrix = Matrix(tmpArr)
+    OutMatrix.move_to(OutText.get_right() + RIGHT*0.7)
+    
+    
+    self.play(FadeIn(OutText))
+    self.play(AnimationGroup(
+        FadeIn(OutMatrix),
+        FadeIn(SolutionSymbols),
+        lag_ratio=0.1,
+    ))
+    
+    self.play(FadeIn(NegativeOneTopRight))
+    
+    out = [NegativeOneTopRight, AllRelevntObject, OutText, OutMatrix, SolutionSymbols]
+    # [0] is -1 top right;  [1] is the group of to the right shifted elements;  [2] is the =>;  [3] is the ResultMatrix;   [4] is the LösungsMengeSymbol
+    return out
+
+
+def ResetOutputMatrix(self, visMatrix, array):
+    tmpArr = [[f"x_{i}"] for i in range(len(array[0]))]
+    refreshMatrix = Matrix(tmpArr).move_to(visMatrix.get_center())
+    
+    visMatrixMob = visMatrix.get_entries()
+    refreshMatrixMob = refreshMatrix.get_entries()
+    
+    self.play(AnimationGroup(
+            *[Transform(visMatrixMob[i], refreshMatrixMob[i]) for i in range(len(refreshMatrixMob))],
+            lag_ratio=0.1,
+        ))
+        
+
 class Hermische_Normalform(Scene):
     def construct(self):
         visuMatrix1 = Matrix(array1)
         self.add(visuMatrix1)
         # self.play(Write(visuMatrix1))
         # self.wait(1)
-
+        
         MatrixHeaders = WriteXHeaders(visuMatrix1, array1)
         self.add(MatrixHeaders)
         # self.play(Write(MatrixHeaders))
@@ -158,15 +257,17 @@ class Hermische_Normalform(Scene):
         # self.play(Create(RedIndicatorLine))
         # self.wait(1)
         
+        
         ImportantLines = GetImportantColumnHighlighterBox(visuMatrix1, array1, MatrixHeaders)
+        """
         self.play(
             AnimationGroup(
                 *[TransformFromCopy(MatrixHeaders[ImpHeaderIDs[i]], ImportantLines[i]) for i in range(len(ImportantLines))],
                 lag_ratio=0.1,
             )
         )
-        # ImportantLinesGroup = VGroup(*ImportantLines)
-        # self.play(Create(ImportantLinesGroup))
+        
+        
         self.wait(2)
         self.play(
             AnimationGroup(
@@ -174,6 +275,17 @@ class Hermische_Normalform(Scene):
                 lag_ratio=0.1,
             )
         )
-        Create_Solution(self, visuMatrix1)
+        """
+        
+        
+        AddObjOutput = AddAdditionalObjects(self, visuMatrix1, array1, MatrixHeaders, RedIndicatorLine)
+        # [0] is -1 top right;  [1] is the group of to the right shifted elements;  [2] is the =>;  [3] is the ResultMatrix;   [4] is the LösungsMengeSymbol
+        
+        
+        
+        
+        for i in range(len(ImpHeaderIDs)):
+            ResetOutputMatrix(self, AddObjOutput[3], array1)
+            Create_Solution(self, visuMatrix1, array1, MatrixHeaders, ImportantLines[i], i, AddObjOutput)
         
         self.wait(2)
