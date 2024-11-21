@@ -2,19 +2,114 @@
 from manim import *
 import numpy as np
 
-array1o = np.array([
+notActArray = np.array([
     [1, 0, 3, -2],
     [0, 1, 4, 1],
     [0, 0, 0, 0]
     ])
-array1 = np.array([
+ACTIVEARRAY = np.array([
     [1, 2, 0, 3, 5, 0, 0, 7, 0],
     [0, 0, 1, 4, 6, 0, 0, 8, 0],
     [0, 0, 0, 0, 0, 1, 0, 9, 0],
     [0, 0, 0, 0, 0, 0, 1, 2, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 1],
     ])
-# test
+
+array1 = ACTIVEARRAY
+
+class Hermische_Normalform(Scene):
+    def construct(self):
+        
+        DrawTitle(self)
+        self.wait(3)
+        self.play(
+            *[FadeOut(mob)for mob in self.mobjects]
+        )
+        
+        visuMatrix1 = Matrix(array1, left_bracket="(", right_bracket=")")
+        self.add(visuMatrix1)
+        self.play(Write(visuMatrix1))
+        self.wait(1)
+        
+        MatrixHeaders = WriteXHeaders(visuMatrix1, array1)
+        self.add(MatrixHeaders)
+        self.play(Write(MatrixHeaders))
+
+        RedIndicatorLine = GetRedLine(visuMatrix1, array1)
+        self.add(RedIndicatorLine)
+        self.play(Create(RedIndicatorLine))
+        self.wait(1)
+        
+        
+        ImportantLines = GetImportantColumnHighlighterBox(visuMatrix1, array1, MatrixHeaders)
+        
+        self.play(
+            AnimationGroup(
+                *[TransformFromCopy(MatrixHeaders[ImpHeaderIDs[i]], ImportantLines[i]) for i in range(len(ImportantLines))],
+                lag_ratio=0.1,
+            )
+        )
+        
+        
+        self.wait(2)
+        self.play(
+            AnimationGroup(
+                *[Transform(ImportantLines[i], MatrixHeaders[ImpHeaderIDs[i]]) for i in range(len(ImportantLines))],
+                lag_ratio=0.1,
+            )
+        )
+        
+        
+        
+        AddObjOutput = AddAdditionalObjects(self, visuMatrix1, array1, MatrixHeaders, RedIndicatorLine)
+        # [0] is -1 top right;  [1] is the group of to the right shifted elements;  [2] is the =>;  [3] is the ResultMatrix;   [4] is the LösungsMengeSymbol
+        
+        
+        
+        Loesunen = []
+        for i in range(len(ImpHeaderIDs)):
+            Loesunen.append(
+                Create_Solution(self, visuMatrix1, array1, MatrixHeaders, ImportantLines[i], i, AddObjOutput)
+            )
+            
+        self.play(AnimationGroup(
+            *[FadeOut(i) for i in AddObjOutput],
+            FadeOut(visuMatrix1),
+            FadeOut(MatrixHeaders),
+            FadeOut(RedIndicatorLine),
+            lag_ratio=0.1,
+            ))
+        
+        Loesunengroup = VGroup(*[
+            VGroup(matrix, MathTex(",").next_to(matrix, RIGHT, buff=0.2))
+            for matrix in Loesunen
+        ])
+        Loesunengroup.arrange(RIGHT, buff=0.4)
+        Loesunengroup[-1][1].set_opacity(0)
+        
+        resLmen = []
+        for i in range(len(Loesunengroup)):
+            resLmen.append(
+                MathTex(f"\mathbb{{L}}_{i}").move_to(Loesunengroup[i].get_bottom()+LEFT)
+            )
+        
+        self.play(AnimationGroup(
+            *[ (Write(Loesunengroup[i]), Write(resLmen[i])) for i in range(len(Loesunengroup))]
+        ))
+        
+        self.play(AnimationGroup(
+            Write(MathTex(f"span").to_edge(LEFT)),
+            Write(Arc(radius=0.3, start_angle=-PI/2, angle=-PI, color=WHITE).stretch_to_fit_height(config.frame_height * 0.9).to_edge(LEFT).shift(RIGHT*1.2)),
+            Write(Arc(radius=0.3, start_angle=-PI/2, angle=PI, color=WHITE).stretch_to_fit_height(config.frame_height * 0.9).to_edge(RIGHT).shift(LEFT*1.2)),
+            *[FadeOut(i) for i in resLmen]
+        ))
+        
+        
+        self.wait(4)
+        
+        FinalScreen(self)
+        self.wait(2)
+
 def GetHermanIndexLinePoints(arr):
     out = []
     height = len(arr)
@@ -80,11 +175,7 @@ def GetRedLine(Matrix, array):
             out = []
             for i in range(len(yas)):
                 out.append(DrawRightAngle(i))
-            '''
-            balls = []
-            for i in range(len(yas)):
-                balls.append(Cube(fill_opacity=0, stroke_width=2, side_length=horizontal_distance).move_to(CenteredElements[i]))
-            '''
+            
             return VGroup(*out)
 
 def WriteXHeaders(Matrix, array):
@@ -99,11 +190,11 @@ def WriteXHeaders(Matrix, array):
 
     out = []
     toppos = (Matrix.get_top() + UP * 0.3)[1]
-    pos = [(Matrix.get_left()+PercRIGHT)[0]-0.1, toppos, 0]
+    pos = [(Matrix.get_left()+PercRIGHT)[0], toppos, 0]
 
     for i in range(len(array[0])):
         out.append(MathTex(f"x_{i+1}", color=GREEN).move_to(pos))
-        pos += PercRIGHT*2+[0.02, 0, 0]
+        pos += PercRIGHT*2 + [0.01, 0, 0]
 
     return VGroup(*out)
 
@@ -140,8 +231,8 @@ def GetImportantColumnHighlighterBox(Matrix, array, Headers):
         
     return out
 
-def Create_Solution(self, Matrix, array, MatrixHeaders, ImportantLine, RowID, AdditionalObjects):
-    matrix_mob = Matrix.get_entries()
+def Create_Solution(self, MatrixA, array, MatrixHeaders, ImportantLine, RowID, AdditionalObjects):
+    matrix_mob = MatrixA.get_entries()
     yas = GetHermanIndexLinePoints(array)
     
     ColumnID = ImpHeaderIDs[RowID]
@@ -153,8 +244,8 @@ def Create_Solution(self, Matrix, array, MatrixHeaders, ImportantLine, RowID, Ad
     
     CleanupObjects = VGroup()
     
-    # self.play(TransformFromCopy(MatrixHeaders[ColumnID], ImportantLine))
-    # self.play(Transform(ImportantLine, MatrixHeaders[ColumnID]))
+    self.play(TransformFromCopy(MatrixHeaders[ColumnID], ImportantLine))
+    self.play(Transform(ImportantLine, MatrixHeaders[ColumnID]))
     
     CurrentItemSelector = Elbow(width=0.5, angle = 5*PI/4, color=PURE_RED).move_to(MatrixHeaders[ColumnID].get_bottom()+DOWN*0.1)
     CleanupObjects.add(CurrentItemSelector)
@@ -174,8 +265,8 @@ def Create_Solution(self, Matrix, array, MatrixHeaders, ImportantLine, RowID, Ad
     FirstLineOne(self, MatrixHeaders[ColumnID], AdditionalObjects[3][0][ColumnID])
     
     for i in range(len(Items)-1, -1, -1):
-        #PutInto(self, Items[i], matrix_mob[yas[i]], MatrixHeaders[yas[i]%len(array[0])], AdditionalObjects[3][0][yas[i]%len(array[0])], AdditionalObjects[0])
-        ...
+        PutInto(self, Items[i], matrix_mob[yas[i]], MatrixHeaders[yas[i]%len(array[0])], AdditionalObjects[3][0][yas[i]%len(array[0])], AdditionalObjects[0])
+        
         
     otherItemsArr = set()
     for i in range(len(Items)):
@@ -185,16 +276,28 @@ def Create_Solution(self, Matrix, array, MatrixHeaders, ImportantLine, RowID, Ad
     for i in range(len(AdditionalObjects[3][0])):
         if  i != ColumnID and i not in otherItemsArr:
             outMats.append(AdditionalObjects[3][0][i])
-            
+    
     if outMats:
         self.play(AnimationGroup(
                 *[Transform(outMats[i], MathTex("0").move_to(outMats[i].get_center())) for i in range(len(outMats))],
                 lag_ratio=0.1,
             ))
     
+    out = []
+    ItmeCounter = 0
+    for i in range(len(AdditionalObjects[3][0])):
+        if i in otherItemsArr:
+            out.append((int(Items[ItmeCounter].get_tex_string())*-1))
+            ItmeCounter += 1
+        elif i == ColumnID:
+            out.append(1)
+        else:
+            out.append(0)
+    
+    out = np.array(out).reshape(-1, 1)
     
     self.play(FadeOut(CleanupObjects), scale=0.5)
-    return None
+    return Matrix(out, left_bracket="(", right_bracket=")")
 
 def PutInto(self, OrigMatrixObj, OrigMatrixGoal, HeaderObj, EndMatrixObj, NegativeOne):
     tmpObj = OrigMatrixObj.copy()
@@ -247,10 +350,10 @@ def AddAdditionalObjects(self, visuMatrix1, array, MatrixHeaders, RedIndicatorLi
         
     AllRelevntObject = VGroup(visuMatrix1, *MatrixHeaders, *RedIndicatorLine)
     self.play(AllRelevntObject.animate.shift(LEFT * 1.3))
-    OutText = MathTex("=>").move_to(visuMatrix1.get_right()+RIGHT*0.7)
+    OutText = MathTex("=>").move_to(visuMatrix1.get_right()+RIGHT*0.5)
     
     tmpArr = [[f"x_{i+1}"] for i in range(len(array[0]))]
-    OutMatrix = Matrix(tmpArr)
+    OutMatrix = Matrix(tmpArr, left_bracket="(", right_bracket=")")
     OutMatrix.move_to(OutText.get_right() + RIGHT*0.7)
     
     
@@ -283,52 +386,18 @@ def ResetOutputMatrix(self, visMatrix, array, Loesungsmengensymbol):
     Loesungcounter += 1
     Loesungsmengensymbol.become(MathTex(f"\mathbb{{L}}_{Loesungcounter}: ").to_corner(DOWN + RIGHT).shift(LEFT*1.5))
     
-
-class Hermische_Normalform(Scene):
-    def construct(self):
-        
-        visuMatrix1 = Matrix(array1)
-        self.add(visuMatrix1)
-        # self.play(Write(visuMatrix1))
-        # self.wait(1)
-        
-        MatrixHeaders = WriteXHeaders(visuMatrix1, array1)
-        self.add(MatrixHeaders)
-        # self.play(Write(MatrixHeaders))
-
-        RedIndicatorLine = GetRedLine(visuMatrix1, array1)
-        self.add(RedIndicatorLine)
-        # self.play(Create(RedIndicatorLine))
-        # self.wait(1)
-        
-        
-        ImportantLines = GetImportantColumnHighlighterBox(visuMatrix1, array1, MatrixHeaders)
-        """
-        self.play(
-            AnimationGroup(
-                *[TransformFromCopy(MatrixHeaders[ImpHeaderIDs[i]], ImportantLines[i]) for i in range(len(ImportantLines))],
-                lag_ratio=0.1,
-            )
-        )
-        
-        
-        self.wait(2)
-        self.play(
-            AnimationGroup(
-                *[Transform(ImportantLines[i], MatrixHeaders[ImpHeaderIDs[i]]) for i in range(len(ImportantLines))],
-                lag_ratio=0.1,
-            )
-        )
-        """
-        
-        
-        AddObjOutput = AddAdditionalObjects(self, visuMatrix1, array1, MatrixHeaders, RedIndicatorLine)
-        # [0] is -1 top right;  [1] is the group of to the right shifted elements;  [2] is the =>;  [3] is the ResultMatrix;   [4] is the LösungsMengeSymbol
-        
-        
-        
-        
-        for i in range(len(ImpHeaderIDs)):
-            Create_Solution(self, visuMatrix1, array1, MatrixHeaders, ImportantLines[i], i, AddObjOutput)
-        
-        self.wait(2)
+def FinalScreen(self):
+    self.play(
+        *[FadeOut(mob)for mob in self.mobjects]
+    )
+    DrawTitle(self)
+    self.play(Write(Tex("Made with ManimCE").scale(0.7).to_corner(DOWN + RIGHT).shift(UP*0.5+DOWN*0.5)))
+    self.play(Write(Tex("Made By Delici0u-s").scale(0.7).to_corner(DOWN + RIGHT).shift(DOWN*0.5)))
+    self.wait(4)
+    self.play(
+        *[FadeOut(mob)for mob in self.mobjects]
+    )
+    
+def DrawTitle(self):
+    self.play(Write(Tex("Hermitesche Normalform").scale(2).shift(UP*0.5)))
+    self.play(Write(Tex("Hermite normal form").scale(1.5).shift(DOWN*0.5)))
